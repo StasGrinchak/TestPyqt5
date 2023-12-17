@@ -1,20 +1,13 @@
-import sys
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-
-
-def window():
-   app = QApplication(sys.argv)
-   w = QWidget()
-   b = QLabel(w)
-   b.setText("Hello World!")
-   w.setGeometry(400,400,400,400)
-   b.move(50,20)
-   w.setWindowTitle("PyQt5")
-   w.show()
-   sys.exit(app.exec_())
+from PyQt5.QtWidgets import QApplication
+from gui import MainWindow
+from port_functionality import SerialPortManager
 
 
 if __name__ == '__main__':
-   window()
+    app = QApplication([])
+
+    serial_manager = SerialPortManager()
+    window = MainWindow(serial_manager)
+
+    window.show()
+    app.exec_()

@@ -1,75 +1,114 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QLineEdit, QComboBox
-from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
+from PyQt5.QtWidgets import QMainWindow, QLabel, QComboBox, QPushButton, QTextEdit, QMessageBox, QTabWidget, QWidget, QVBoxLayout
+from PyQt5.QtSerialPort import QSerialPortInfo
 
 
-class SerialCommunicationApp(QWidget):
-    def __init__(self):
+class MainWindow(QMainWindow):
+    def __init__(self, serial_port_manager):
         super().__init__()
 
-        self.serial_port = QSerialPort()
+        self.serial_manager = serial_port_manager
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        # Interface elements
+        self.tabs = QTabWidget(self)
+        self.addTabButton = QPushButton("Add Terminal", self)
+        self.macroComboBox = QComboBox(self)
+        self.sendMacroButton = QPushButton("Send Macro", self)
 
-        # COM порт
-        com_label = QLabel("COM порт:")
-        self.com_combobox = QComboBox(self)
-        self.populate_com_ports()
-        layout.addWidget(com_label)
-        layout.addWidget(self.com_combobox)
+        self.macroComboBox.addItem("Macro 1", "Hello World!")
+        self.macroComboBox.addItem("Macro 2", "How are you?")
 
-        # Baud rate
-        baud_label = QLabel("Baud rate:")
-        self.baud_combobox = QComboBox(self)
+        # Connecting event handlers
+        self.addTabButton.clicked.connect(self.add_terminal_tab)
+        self.sendMacroButton.clicked.connect(self.send_macro)
+
+        # Placement of interface elements
+        self.setGeometry(100, 100, 600, 400)
+        self.tabs.setGeometry(10, 10, 580, 340)
+        self.addTabButton.setGeometry(10, 360, 120, 30)
+        self.macroComboBox.setGeometry(140, 360, 120, 30)
+        self.sendMacroButton.setGeometry(270, 360, 120, 30)
+
+        # Add an initial terminal tab
+        self.add_terminal_tab()
+
+    def add_terminal_tab(self):
+        index = self.tabs.count() + 1
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        port_label = QLabel("COM Port:", tab)
+        port_combo = QComboBox(tab)
+
+        baud_rate_label = QLabel("Baud Rate:", tab)
+        baud_rate_combo = QComboBox(tab)
+
+        open_port_button = QPushButton("Open Port", tab)
+        close_port_button = QPushButton("Close Port", tab)
+
+        data_text_edit = QTextEdit(tab)
+
+        termination_label = QLabel("Termination:", tab)
+        termination_combo = QComboBox(tab)
+        termination_combo.addItem("CR/LF", "\r\n")
+        termination_combo.addItem("LF", "\n")
+        termination_combo.addItem("CR", "\r")
+
+        send_data_button = QPushButton("Send Data", tab)
+
+        layout.addWidget(port_label)
+        layout.addWidget(port_combo)
+        layout.addWidget(baud_rate_label)
+        layout.addWidget(baud_rate_combo)
+        layout.addWidget(open_port_button)
+        layout.addWidget(close_port_button)
+        layout.addWidget(data_text_edit)
+        layout.addWidget(termination_label)
+        layout.addWidget(termination_combo)
+        layout.addWidget(send_data_button)
+
+        self.tabs.addTab(tab, f"Terminal {index}")
+
+        # Filling COM ports and baud rate
+        ports = [portInfo.portName() for portInfo in QSerialPortInfo.availablePorts()]
         baud_rates = ['9600', '19200', '38400', '57600', '115200']
-        self.baud_combobox.addItems(baud_rates)
-        layout.addWidget(baud_label)
-        layout.addWidget(self.baud_combobox)
 
-        # Введення та виведення даних
-        self.input_text = QLineEdit(self)
-        self.output_label = QLabel("Виведення даних:")
-        layout.addWidget(self.input_text)
-        layout.addWidget(self.output_label)
+        port_combo.addItems(ports)
+        baud_rate_combo.addItems(baud_rates)
 
-        # Кнопка для взаємодії з пристроєм
-        send_button = QPushButton('Відправити дані', self)
-        send_button.clicked.connect(self.send_data)
-        layout.addWidget(send_button)
+        # Connecting event handlers for this tab
+        open_port_button.clicked.connect(lambda: self.open_port_clicked(index))
+        close_port_button.clicked.connect(lambda: self.close_port_clicked(index))
+        send_data_button.clicked.connect(lambda: self.send_data_clicked(index))
 
-        self.setLayout(layout)
-        self.setGeometry(300, 300, 400, 300)
-        self.setWindowTitle('Serial Communication App')
-        self.show()
+    def open_port_clicked(self, index):
+        port_name = self.tabs.widget(index).findChild(QComboBox, "port_combo").currentText()
+        baud_rate = int(self.tabs.widget(index).findChild(QComboBox, "baud_rate_combo").currentText())
 
-    def populate_com_ports(self):
-        # Заповнення доступних COM-портів
-        com_ports = [info.portName() for info in QSerialPortInfo.availablePorts()]
-        print(com_ports)
-        self.com_combobox.addItems(com_ports)
-
-    def send_data(self):
-        # Взаємодія з пристроєм
-        port_name = self.com_combobox.currentText()
-        baud_rate = int(self.baud_combobox.currentText())
-        input_data = self.input_text.text()
-
-        self.serial_port.setPortName(port_name)
-        self.serial_port.setBaudRate(baud_rate)
-
-        if self.serial_port.open(QSerialPort.WriteOnly):
-            self.serial_port.write(input_data.encode())
-            self.serial_port.close()
-
-            # Оновлення виведення даних
-            self.output_label.setText(f"Виведення даних: {input_data}")
+        if not self.serial_manager.serial_ports[index].isOpen():
+            if self.serial_manager.open_port(port_name, baud_rate):
+                self.tabs.widget(index).findChild(QPushButton, "open_port_button").setEnabled(False)
+                self.tabs.widget(index).findChild(QPushButton, "close_port_button").setEnabled(True)
         else:
-            print(f"Не вдалося відкрити COM-порт {port_name}.")
+            QMessageBox.information(self, 'Port Opened', 'Port is already opened.')
 
+    def close_port_clicked(self, index):
+        if self.serial_manager.serial_ports[index].isOpen():
+            if self.serial_manager.close_port(index):
+                self.tabs.widget(index).findChild(QPushButton, "open_port_button").setEnabled(True)
+                self.tabs.widget(index).findChild(QPushButton, "close_port_button").setEnabled(False)
+        else:
+            QMessageBox.information(self, 'Port Closed', 'Port is already closed.')
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = SerialCommunicationApp()
-    sys.exit(app.exec_())
+    def send_data_clicked(self, index):
+        data = self.tabs.widget(index).findChild(QTextEdit, "data_text_edit").toPlainText()
+        termination = self.tabs.widget(index).findChild(QComboBox, "termination_combo").currentData()
+        self.serial_manager.set_termination(termination)
+        self.serial_manager.send_data(index, data)
+
+    def send_macro(self):
+        selected_index = self.tabs.currentIndex()
+        if selected_index >= 0:
+            macro_text = self.macroComboBox.currentData()
+            self.send_data_clicked(selected_index, "", macro_text)
