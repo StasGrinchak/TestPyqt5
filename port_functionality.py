@@ -1,5 +1,4 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QComboBox, QPushButton, QTextEdit, QMessageBox
-from PyQt5.QtCore import Qt
 from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
 
 class SerialPortManager:
@@ -76,7 +75,15 @@ class MainWindow(QMainWindow):
 
         self.data_text_edit = QTextEdit(self)
 
+        self.termination_label = QLabel("Termination:", self)
+        self.termination_combo = QComboBox(self)
+        self.termination_combo.addItem("CR/LF", "\r\n")
+        self.termination_combo.addItem("LF", "\n")
+        self.termination_combo.addItem("CR", "\r")
+
         # Placement of interface elements
+        self.setGeometry(100, 100, 400, 300)
+
         self.port_label.setGeometry(10, 10, 80, 25)
         self.port_combo.setGeometry(100, 10, 100, 25)
 
@@ -85,9 +92,13 @@ class MainWindow(QMainWindow):
 
         self.open_port_button.setGeometry(10, 80, 120, 30)
         self.close_port_button.setGeometry(140, 80, 120, 30)
-        self.send_data_button.setGeometry(10, 120, 250, 30)
 
-        self.data_text_edit.setGeometry(10, 160, 250, 100)
+        self.data_text_edit.setGeometry(10, 120, 250, 70)
+
+        self.termination_label.setGeometry(10, 200, 80, 25)
+        self.termination_combo.setGeometry(100, 200, 100, 25)
+
+        self.send_data_button.setGeometry(10, 240, 250, 30)
 
         # Filling COM ports and baud rate
         ports = [portInfo.portName() for portInfo in QSerialPortInfo.availablePorts()]
@@ -112,7 +123,6 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.information(self, 'Th port is open', 'The port is already open!')
             
-
     def close_port_clicked(self):
         if self.serial_manager.serial_port.isOpen():
             self.serial_manager.close_port()
@@ -123,6 +133,8 @@ class MainWindow(QMainWindow):
 
     def send_data_clicked(self):
         data = self.data_text_edit.toPlainText()
+        termination = self.termination_combo.currentData()
+        self.serial_manager.set_termination(termination)
         self.serial_manager.send_data(data)
 
 
