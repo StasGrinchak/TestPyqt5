@@ -2,11 +2,15 @@ from PyQt5.QtSerialPort import QSerialPort
 
 
 class SerialPortManager:
+    """
+    A class for managing port communications, recording and receiving data.
+    """
     def __init__(self):
         self.serial_ports = []
         self.termination = b'\r\n'
 
     def open_port(self, port_name, baud_rate):
+        # Opening a connection to a port
         serial_port = QSerialPort()
         serial_port.setReadBufferSize(1024)
 
@@ -26,6 +30,7 @@ class SerialPortManager:
             return False
 
     def close_port(self, index):
+        # Closing connection with a port
         if 0 <= index < len(self.serial_ports):
             serial_port = self.serial_ports[index]
             if serial_port.isOpen():
@@ -35,6 +40,7 @@ class SerialPortManager:
         return False
 
     def send_data(self, index, data):
+        # Writing data to a device by adding a line ending
         if 0 <= index < len(self.serial_ports):
             serial_port = self.serial_ports[index]
             if serial_port.isOpen():
@@ -44,6 +50,7 @@ class SerialPortManager:
         return False
 
     def read_data(self, index):
+        # Receiving data and opening
         if 0 <= index < len(self.serial_ports):
             serial_port = self.serial_ports[index]
             if serial_port.isOpen():
@@ -52,4 +59,5 @@ class SerialPortManager:
         return None
 
     def set_termination(self, termination):
+        # Saving line ending status (for later addition)
         self.termination = termination

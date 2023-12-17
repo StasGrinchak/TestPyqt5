@@ -3,6 +3,9 @@ from PyQt5.QtSerialPort import QSerialPortInfo
 
 
 class MainWindow(QMainWindow):
+    """
+    The class responsible for visualizing this functionality, with connection to some ports.
+    """
     def __init__(self, serial_port_manager):
         super().__init__()
 
@@ -16,8 +19,8 @@ class MainWindow(QMainWindow):
         self.macroComboBox = QComboBox(self)
         self.sendMacroButton = QPushButton("Send Macro", self)
 
-        self.macroComboBox.addItem("Macro 1", "Hello World!")
-        self.macroComboBox.addItem("Macro 2", "How are you?")
+        self.macroComboBox.addItem("Test 1", "Test message 1")
+        self.macroComboBox.addItem("Test 2", "Test message 2")
 
         # Connecting event handlers
         self.addTabButton.clicked.connect(self.add_terminal_tab)
@@ -34,6 +37,7 @@ class MainWindow(QMainWindow):
         self.add_terminal_tab()
 
     def add_terminal_tab(self):
+        # Adding a separate terminal tab
         index = self.tabs.count() + 1
         tab = QWidget()
         layout = QVBoxLayout(tab)
@@ -80,20 +84,24 @@ class MainWindow(QMainWindow):
         # Connecting event handlers for this tab
         open_port_button.clicked.connect(lambda: self.open_port_clicked(index))
         close_port_button.clicked.connect(lambda: self.close_port_clicked(index))
-        send_data_button.clicked.connect(lambda: self.send_data_clicked(index))
+        send_data_button.clicked.connect(lambda: self.send_data_clicked(index, data_text_edit))
 
     def open_port_clicked(self, index):
-        port_name = self.tabs.widget(index).findChild(QComboBox, "port_combo").currentText()
-        baud_rate = int(self.tabs.widget(index).findChild(QComboBox, "baud_rate_combo").currentText())
+        # Functionality for opening a connection to a port
+        selected_tab = self.tabs.widget(index)
+        if selected_tab:
+            port_name = selected_tab.findChild(QComboBox, "port_combo").currentText()
+            baud_rate = int(selected_tab.findChild(QComboBox, "baud_rate_combo").currentText())
 
-        if not self.serial_manager.serial_ports[index].isOpen():
-            if self.serial_manager.open_port(port_name, baud_rate):
-                self.tabs.widget(index).findChild(QPushButton, "open_port_button").setEnabled(False)
-                self.tabs.widget(index).findChild(QPushButton, "close_port_button").setEnabled(True)
-        else:
-            QMessageBox.information(self, 'Port Opened', 'Port is already opened.')
+            if not self.serial_manager.serial_ports[index].isOpen():
+                if self.serial_manager.open_port(port_name, baud_rate):
+                    selected_tab.findChild(QPushButton, "open_port_button").setEnabled(False)
+                    selected_tab.findChild(QPushButton, "close_port_button").setEnabled(True)
+            else:
+                QMessageBox.information(self, 'Port Opened', 'Port is already opened.')
 
     def close_port_clicked(self, index):
+        # Functionality for closing a port connection
         if self.serial_manager.serial_ports[index].isOpen():
             if self.serial_manager.close_port(index):
                 self.tabs.widget(index).findChild(QPushButton, "open_port_button").setEnabled(True)
@@ -101,14 +109,19 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.information(self, 'Port Closed', 'Port is already closed.')
 
-    def send_data_clicked(self, index):
-        data = self.tabs.widget(index).findChild(QTextEdit, "data_text_edit").toPlainText()
-        termination = self.tabs.widget(index).findChild(QComboBox, "termination_combo").currentData()
-        self.serial_manager.set_termination(termination)
-        self.serial_manager.send_data(index, data)
+    def send_data_clicked(self, index, data):
+        # Sending data for recording
+        selected_tab = self.tabs.widget(index)
+        if selected_tab:
+            termination_combo = selected_tab.findChild(QComboBox, "termination_combo")
+            if termination_combo:
+                termination = termination_combo.currentData()
+                self.serial_manager.set_termination(termination)
+                self.serial_manager.send_data(index, data)
 
     def send_macro(self):
+        # Sending a prepared macro for recording
         selected_index = self.tabs.currentIndex()
         if selected_index >= 0:
             macro_text = self.macroComboBox.currentData()
-            self.send_data_clicked(selected_index, "", macro_text)
+            self.send_data_clicked(selected_index, macro_text)
